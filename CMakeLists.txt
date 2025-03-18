@@ -13,9 +13,9 @@ catkin_package()
 include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 
 
-add_executable(climbingrobot_hardware_interface src/ros_hw.cpp)
-target_link_libraries(climbingrobot_hardware_interface ${catkin_LIBRARIES})
-install(TARGETS climbingrobot_hardware_interface
+add_executable(ros_control_node src/ros_hw.cpp)
+target_link_libraries(ros_control_node ${catkin_LIBRARIES})
+install(TARGETS ros_control_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
