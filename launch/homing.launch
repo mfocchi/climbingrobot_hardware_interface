@@ -1,0 +1,18 @@
+<!-- homing.launch -->
+<launch>
+
+  <!-- 1) Bringup: include the low-level bringup launch file -->
+  <include file="$(find climbingrobot_hardware_interface)/launch/alpine_low_level_bringup.launch"/>
+
+  <!-- 2) Homing node: delayed 5 s to wait for services/topics to be ready -->
+  <!--    ROS 1 has no native TimerAction, so we use a launch-prefix sleep    -->
+  <node pkg="climbingrobot_hardware_interface"
+        type="homing_procedure.py"
+        name="homing_procedure"
+        output="screen"
+        launch-prefix="bash -c 'sleep 5.0 &amp;&amp; exec \"$@\"' --">
+
+    <param name="step_delay" value="1.0"/>
+  </node>
+
+</launch>

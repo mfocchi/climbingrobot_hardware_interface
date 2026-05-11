@@ -1,0 +1,100 @@
+<!-- alpine_low_level_bringup.launch -->
+<launch>
+
+  <!-- Common winch parameters -->
+  <!-- closed_loop_position is implemented as outer loop on rope_length + ODrive velocity mode -->
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- Left telemetry node                                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <node pkg="climbingrobot_hardware_interface"
+        type="telemetry_node.py"
+        name="telemetry_node_left"
+        output="screen">
+
+    <param name="side"         value="left"/>
+    <param name="serial_port"  value="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5970047399-if00"/>
+
+    <!-- Config & debug -->
+    <param name="config_path"  value="/home/andrea/ros1_ws/src/climbingrobot_hardware_interface/config/arganelloTelemetry.json"/>
+    <param name="debug_mode"   value="true"/>
+
+    <!-- Position outer loop -->
+    <param name="rope_position_outer_loop_enabled"  value="true"/>
+    <param name="rope_position_kp"                  value="6.0"/>
+    <param name="rope_position_max_vel_m_s"         value="0.10"/>
+    <param name="rope_position_deadband_m"          value="0.0015"/>
+    <!-- rope_position negative => pull up / rewind, both left and right -->
+    <param name="rope_direction_sign"               value="1.0"/>
+
+    <!-- Position profile: near zone only in last few mm -->
+    <param name="rope_position_motor_vel_scale"     value="0.75"/>
+    <param name="rope_position_up_near_vel_m_s"     value="0.008"/>
+    <param name="rope_position_up_far_vel_m_s"      value="0.040"/>
+    <param name="rope_position_down_near_vel_m_s"   value="0.110"/>
+    <param name="rope_position_down_far_vel_m_s"    value="0.180"/>
+    <param name="rope_position_profile_zone_m"      value="0.004"/>
+  </node>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- Right telemetry node                                        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <node pkg="climbingrobot_hardware_interface"
+        type="telemetry_node.py"
+        name="telemetry_node_right"
+        output="screen">
+
+    <param name="side"         value="right"/>
+    <param name="serial_port"  value="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5970046081-if00"/>
+
+    <!-- Config & debug -->
+    <param name="config_path"  value="/home/andrea/ros1_ws/src/climbingrobot_hardware_interface/config/arganelloTelemetry.json"/>
+    <param name="debug_mode"   value="true"/>
+
+    <!-- Position outer loop -->
+    <param name="rope_position_outer_loop_enabled"  value="true"/>
+    <param name="rope_position_kp"                  value="6.0"/>
+    <param name="rope_position_max_vel_m_s"         value="0.10"/>
+    <param name="rope_position_deadband_m"          value="0.0015"/>
+    <param name="rope_direction_sign"               value="1.0"/>
+
+    <!-- Position profile -->
+    <param name="rope_position_motor_vel_scale"     value="0.75"/>
+    <param name="rope_position_up_near_vel_m_s"     value="0.008"/>
+    <param name="rope_position_up_far_vel_m_s"      value="0.040"/>
+    <param name="rope_position_down_near_vel_m_s"   value="0.110"/>
+    <param name="rope_position_down_far_vel_m_s"    value="0.180"/>
+    <param name="rope_position_profile_zone_m"      value="0.004"/>
+  </node>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- Dongle node                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <node pkg="climbingrobot_hardware_interface"
+        type="dongle_node.py"
+        name="dongle_node"
+        output="screen">
+
+    <param name="serial_port"  value="/dev/serial/by-id/usb-1a86_USB_Single_Serial_5A7A010904-if00"/>
+    <param name="baud"         value="1000000"/>
+    <param name="poll_rate"    value="100.0"/>
+  </node>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- Jump node — SAFE, sends no commands until /alpine/jump      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <node pkg="climbingrobot_hardware_interface"
+        type="jump.py"
+        name="jump_node"
+        output="screen">
+
+    <param name="step_left_force"   value="-18.0"/>
+    <param name="step_right_force"  value="18.0"/>
+    <param name="step_push_ms"      value="220.0"/>
+    <param name="step_flight_ms"    value="900.0"/>
+    <param name="hold_force"        value="10.0"/>
+    <param name="max_abs_rope_force" value="25.0"/>
+    <param name="optimized_csv"     value="/home/andrea/ros1_ws/optimized_jump.csv"/>
+  </node>
+
+</launch>

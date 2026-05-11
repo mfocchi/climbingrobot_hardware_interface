@@ -1,0 +1,13 @@
+{
+  "rate_hz": 200,
+  "include_timestamp": true,
+  "include_last_reply": true,
+  "fields": [
+    { "name": "brake",          "source": "brake",  "type": "bool" },
+    { "name": "ibus",           "source": "odrive", "type": "float", "path": "ibus" },
+    { "name": "motor_torque",   "source": "odrive", "type": "float", "path": "axis0.motor.torque_estimate" },
+    { "name": "syncronous_roller_raw_wrapped",   "source": "odrive", "type": "int", "path": "inc_encoder0.raw_wrapped" },
+    { "name": "motor_raw_wrapped",   "source": "odrive", "type": "float", "path": "onboard_encoder0.raw" }
+  ]
+}
+

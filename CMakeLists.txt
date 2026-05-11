@@ -1,22 +1,79 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(climbingrobot_hardware_interface)
 
-## Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs)
-find_package(Eigen3 3.3 REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+  rospy
+  std_msgs
+  sensor_msgs
+  geometry_msgs
+  nav_msgs
+  tf
+  message_generation
+)
 
+################################################
+## Messages and services
+################################################
 
-## Declare a catkin package
-catkin_package()
+add_message_files(
+  FILES
+  DebugMessage.msg
+  Imus.msg
+  RopeCommand.msg
+  RopeTelemetry.msg
+)
 
-## Build talker and listener
-include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
+add_service_files(
+  FILES
+  RopeControlMode.srv
+)
 
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
-add_executable(ros_control_node src/ros_hw.cpp)
-target_link_libraries(ros_control_node ${catkin_LIBRARIES})
-install(TARGETS ros_control_node
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+###################################
+## Catkin package configuration
+###################################
+
+catkin_package(
+  CATKIN_DEPENDS
+    rospy
+    std_msgs
+    sensor_msgs
+    geometry_msgs
+    nav_msgs
+    tf
+    message_runtime
+)
+
+###########
+## Build ##
+###########
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+
+#############
+## Install ##
+#############
+
+catkin_install_python(PROGRAMS
+  scripts/alpine_odometry_node.py
+  scripts/dongle_node.py
+  scripts/friction_estimator.py
+  scripts/homing_procedure.py
+  scripts/jump.py
+  scripts/position_control_logger.py
+  scripts/position_step_test.py
+  scripts/telemetry_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY
+  launch
+  config
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
