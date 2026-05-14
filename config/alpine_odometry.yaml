@@ -1,0 +1,32 @@
+world_frame: world
+base_frame: base_link
+publish_tf: true
+publish_rate_hz: 100.0
+
+left_rope_topic: /winch/left/telemetry
+right_rope_topic: /winch/right/telemetry
+dongle_topic: /alpine/dongle/telemetry
+
+# Coordinate mondo:
+# x = distanza dal muro, positivo fuori dal muro
+# y = sinistra -> destra
+# z = altezza da terra
+anchor_left_xyz:  [0.45, 0.0, 2.50]
+anchor_right_xyz: [0.45, 0.65, 2.50]
+
+# Lunghezze fisiche in posa home, dopo rope_zero.
+# Left: IMU1/uscita sinistra coincide col riferimento zero.
+# Right: lunghezza da anchor destro a punto attacco destro/body.
+left_home_offset_m: 0.0
+right_home_offset_m: 0.53
+
+# Geometria body in frame body.
+# Body/IMU2 circa 55 cm sotto l’uscita/IMU1 in home.
+body_origin_from_left_attachment_xyz: [0.0, 0.0, -0.55]
+
+# Separazione tra attacco sinistro e attacco destro sul body.
+right_attachment_from_left_body_xyz: [0.0, -0.55, 0.0]
+
+# Asse IMU1 allineato alla corda sinistra.
+# Da verificare: se z odom non torna, provare x, -z, z, y, -y.
+left_rope_axis: -x

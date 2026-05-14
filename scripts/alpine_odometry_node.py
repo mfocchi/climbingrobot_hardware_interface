@@ -4,12 +4,12 @@ from typing import Optional, Tuple
 import numpy as np
 import rospy
 
-from geometry_msgs.msg import Point, PoseStamped, TransformStamped, Vector3
+from geometry_msgs.msg import Point, PoseStamped, TransformStamped, Vector3, Quaternion
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32MultiArray
 import tf
 
-from climbingrobot_hardware_interface.msg import RopeTelemetry
+from climbingrobot_hardware_interface.msg import RopeTelemetry, AlpineBodyTelemetry
 
 
 def quat_to_rot(qxyzw: np.ndarray) -> np.ndarray:
@@ -63,7 +63,10 @@ class AlpineOdometryNode:
 
         self.body_quat_xyzw: Optional[np.ndarray] = None
         self.body_gyro:      Optional[np.ndarray] = None
+        self.body_acc:       Optional[np.ndarray] = None
         self.rope_quat_xyzw: Optional[np.ndarray] = None
+        self.rope_gyro:      Optional[np.ndarray] = None
+        self.rope_acc:       Optional[np.ndarray] = None
 
         self.last_body_pos:  Optional[np.ndarray] = None
         self.last_stamp_s:   Optional[float]      = None
@@ -75,6 +78,7 @@ class AlpineOdometryNode:
         self.pub_odom  = rospy.Publisher('/odom',                    Odometry,         queue_size=10)
         self.pub_pose  = rospy.Publisher('/alpine/odometry/pose',    PoseStamped,      queue_size=10)
         self.pub_debug = rospy.Publisher('/alpine/odometry/debug',   Float32MultiArray, queue_size=10)
+        self.pub_body_telemetry = rospy.Publisher('/alpine_body/telemetry', AlpineBodyTelemetry, queue_size=10)
 
         self.tf_broadcaster = tf.TransformBroadcaster() if self.publish_tf else None
 
@@ -98,11 +102,64 @@ class AlpineOdometryNode:
     def _cb_right_rope(self, msg: RopeTelemetry):
         self.right_rope_msg = msg
 
-    def _parse_imu_block(self, vals: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def _parse_imu_block(self, vals: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         q_wxyz = vals[0:4].astype(float)
+        acc    = vals[4:7].astype(float)
         gyro   = vals[7:10].astype(float)
         q_xyzw = np.array([q_wxyz[1], q_wxyz[2], q_wxyz[3], q_wxyz[0]], dtype=float)
-        return q_xyzw, gyro
+
+        n = np.linalg.norm(q_xyzw)
+        if np.isfinite(n) and n > 1e-9:
+            q_xyzw = q_xyzw / n
+        else:
+            q_xyzw = np.array([0.0, 0.0, 0.0, 1.0], dtype=float)
+
+        return q_xyzw, acc, gyro
+
+    def _vec3_msg(self, v: np.ndarray) -> Vector3:
+        return Vector3(x=float(v[0]), y=float(v[1]), z=float(v[2]))
+
+    def _quat_msg(self, q_xyzw: np.ndarray) -> Quaternion:
+        return Quaternion(
+            x=float(q_xyzw[0]),
+            y=float(q_xyzw[1]),
+            z=float(q_xyzw[2]),
+            w=float(q_xyzw[3]),
+        )
+
+    def _rpy_from_quat(self, q_xyzw: np.ndarray) -> Vector3:
+        r, p, y = tf.transformations.euler_from_quaternion([
+            float(q_xyzw[0]),
+            float(q_xyzw[1]),
+            float(q_xyzw[2]),
+            float(q_xyzw[3]),
+        ])
+        return Vector3(x=float(r), y=float(p), z=float(y))
+
+    def _publish_alpine_body_telemetry(self):
+        if (
+            self.body_quat_xyzw is None or self.body_gyro is None or self.body_acc is None or
+            self.rope_quat_xyzw is None or self.rope_gyro is None or self.rope_acc is None
+        ):
+            return
+
+        msg = AlpineBodyTelemetry()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = self.world_frame
+
+        msg.rope_imu_orientation = self._quat_msg(self.rope_quat_xyzw)
+        msg.rope_imu_angular_velocity = self._vec3_msg(self.rope_gyro)
+        msg.rope_imu_rpy = self._rpy_from_quat(self.rope_quat_xyzw)
+        msg.rope_imu_rpy_derivatives = self._vec3_msg(self.rope_gyro)
+        msg.rope_imu_acceleration = self._vec3_msg(self.rope_acc)
+
+        msg.body_imu_orientation = self._quat_msg(self.body_quat_xyzw)
+        msg.body_imu_angular_velocity = self._vec3_msg(self.body_gyro)
+        msg.body_imu_rpy = self._rpy_from_quat(self.body_quat_xyzw)
+        msg.body_imu_rpy_derivatives = self._vec3_msg(self.body_gyro)
+        msg.body_imu_acceleration = self._vec3_msg(self.body_acc)
+
+        self.pub_body_telemetry.publish(msg)
 
     def _cb_dongle(self, msg: Float32MultiArray):
         data = np.array(msg.data, dtype=float)
@@ -111,8 +168,14 @@ class AlpineOdometryNode:
         self.epoch_ms = float(data[0])
         imu1 = data[1:12]
         imu2 = data[12:23]
-        self.body_quat_xyzw, self.body_gyro = self._parse_imu_block(imu1)
-        self.rope_quat_xyzw, _              = self._parse_imu_block(imu2)
+
+        # Real robot mapping:
+        # IMU1 = rope / cable IMU
+        # IMU2 = body IMU
+        self.rope_quat_xyzw, self.rope_acc, self.rope_gyro = self._parse_imu_block(imu1)
+        self.body_quat_xyzw, self.body_acc, self.body_gyro = self._parse_imu_block(imu2)
+
+        self._publish_alpine_body_telemetry()
 
     # ------------------------------------------------------------------ #
     # Helpers

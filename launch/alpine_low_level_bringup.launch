@@ -81,6 +81,20 @@
   </node>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- Alpine odometry + body telemetry                          -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <node pkg="climbingrobot_hardware_interface"
+        type="alpine_odometry_node.py"
+        name="alpine_odometry_node"
+        output="screen">
+
+    <rosparam command="load"
+              file="$(find climbingrobot_hardware_interface)/config/alpine_odometry.yaml"/>
+  </node>
+
+
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Jump node — SAFE, sends no commands until /alpine/jump      -->
   <!-- ═══════════════════════════════════════════════════════════ -->
   <node pkg="climbingrobot_hardware_interface"
