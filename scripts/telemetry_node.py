@@ -12,6 +12,7 @@ from collections import deque
 
 import rospy
 from std_msgs.msg import String
+from climbingrobot_hardware_interface.srv import RopeControlMode, RopeControlModeResponse
 from std_srvs.srv import Trigger, TriggerResponse
 
 from climbingrobot_hardware_interface.msg import RopeCommand
@@ -110,6 +111,11 @@ class TelemetryNode:
         rospy.Service(f"{base}/brake_disengage", Trigger, self._srv_brake_disengage)
         rospy.Service(f"{base}/sync_now",        Trigger, self._srv_sync_now)
         rospy.Service(f"{base}/rope_zero",       Trigger, self._srv_rope_zero)
+
+        # Compatibility with climbingrobot_controller2_real.py
+        # The real controller expects a service /winch/<side>/set_control_mode.
+        # Internally we reuse the same mode handling as /winch/<side>/set_motor_mode.
+        rospy.Service(f"{base}/set_control_mode", RopeControlMode, self._srv_set_control_mode)
 
         # ── TX queue & CSV header tracking ────────────────────────────────────
         self.tx_queue: deque = deque()
@@ -227,6 +233,32 @@ class TelemetryNode:
     # ─────────────────────────────────────────────────────────────────────────
     # Motor mode callback
     # ─────────────────────────────────────────────────────────────────────────
+    def _normalize_control_mode(self, mode: str) -> str:
+        # Historical compatibility:
+        # old real controller uses close_loop_*, hardware node uses closed_loop_*.
+        aliases = {
+            "close_loop_torque": "closed_loop_torque",
+            "close_loop_position": "closed_loop_position",
+            "close_loop_velocity": "closed_loop_velocity",
+            "closed_loop_torque": "closed_loop_torque",
+            "closed_loop_position": "closed_loop_position",
+            "closed_loop_velocity": "closed_loop_velocity",
+            "idle": "idle",
+        }
+        key = str(mode).strip()
+        return aliases.get(key, key)
+
+    def _srv_set_control_mode(self, req):
+        mode = self._normalize_control_mode(req.message)
+        try:
+            # Reuse exactly the same logic as the /set_motor_mode topic callback.
+            self._set_motor_mode_cb(String(data=mode))
+            rospy.loginfo(f"[{self.side}] set_control_mode service -> {mode}")
+            return RopeControlModeResponse(success=True)
+        except Exception as e:
+            rospy.logerr(f"[{self.side}] set_control_mode failed: {e}")
+            return RopeControlModeResponse(success=False)
+
     def _set_motor_mode_cb(self, msg) -> None:
         m = (msg.data or '').strip().lower()
 

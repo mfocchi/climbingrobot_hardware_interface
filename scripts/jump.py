@@ -4,6 +4,7 @@ import math
 import rospy
 
 from std_srvs.srv import Trigger, TriggerResponse
+from climbingrobot_hardware_interface.srv import AlpineBodyCommand, AlpineBodyCommandResponse
 from std_msgs.msg import Float32, String
 from climbingrobot_hardware_interface.msg import RopeCommand
 
@@ -23,6 +24,11 @@ class JumpNode:
         rospy.Service('/alpine/jump',       Trigger, self.handle_jump)
         rospy.Service('/alpine/jump_abort', Trigger, self.handle_abort)
         rospy.Service('/alpine/jump_stop',  Trigger, self.handle_stop)
+
+        # Compatibility with climbingrobot_controller2_real.py.
+        # The real controller calls /alpine_body/command with leg_force/contact_normal.
+        # For now this triggers the same safe jump sequence as /alpine/jump.
+        rospy.Service('/alpine_body/command', AlpineBodyCommand, self.handle_alpine_body_command)
 
         # ── Timer: 100 Hz state machine ──────────────────────────────────
         self.timer = rospy.Timer(rospy.Duration(0.01), self.tick)
@@ -225,6 +231,21 @@ class JumpNode:
     # ────────────────────────────────────────────────────────────────────
     # Service handlers (ROS 1: return TriggerResponse directly)
     # ────────────────────────────────────────────────────────────────────
+
+    def handle_alpine_body_command(self, req):
+        rospy.logwarn(
+            "[alpine_body/command] received: leg_force=%.3f, contact_normal=(%.3f, %.3f, %.3f). Triggering jump sequence.",
+            float(req.leg_force),
+            float(req.contact_normal.x),
+            float(req.contact_normal.y),
+            float(req.contact_normal.z),
+        )
+        try:
+            self.start_jump_sequence()
+            return AlpineBodyCommandResponse(ack=True)
+        except Exception as e:
+            rospy.logerr(f"[alpine_body/command] failed: {e}")
+            return AlpineBodyCommandResponse(ack=False)
 
     def handle_jump(self, req):
         self.sequence_running    = True

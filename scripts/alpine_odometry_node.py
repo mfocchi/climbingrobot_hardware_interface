@@ -151,6 +151,12 @@ class AlpineOdometryNode:
         msg.rope_imu_angular_velocity = self._vec3_msg(self.rope_gyro)
         msg.rope_imu_rpy = self._rpy_from_quat(self.rope_quat_xyzw)
         msg.rope_imu_rpy_derivatives = self._vec3_msg(self.rope_gyro)
+
+        # Compatibility with climbingrobot_controller2_real.py:
+        # older real controller reads msg.rope_imu_rpy_d.
+        if hasattr(msg, "rope_imu_rpy_d"):
+            msg.rope_imu_rpy_d = self._vec3_msg(self.rope_gyro)
+
         msg.rope_imu_acceleration = self._vec3_msg(self.rope_acc)
 
         msg.body_imu_orientation = self._quat_msg(self.body_quat_xyzw)
